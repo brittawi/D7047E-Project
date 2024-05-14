@@ -6,6 +6,8 @@ from torch.utils.data import WeightedRandomSampler
 from torchvision.utils import make_grid 
 import torch
 
+import lightning as L
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -151,3 +153,10 @@ def plotExamples(train_loader):
     images, labels = examples
     grid = make_grid(images[:9], nrow=3)
     plt.imshow(grid.permute(1, 2, 0))
+    
+def set_reproducibility(seed=None):
+    if seed is None:
+        seed = 42
+    np.random.seed(seed)
+    L.seed_everything(42)
+    torch.manual_seed(seed)
