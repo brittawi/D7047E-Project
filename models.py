@@ -23,11 +23,12 @@ from ray.tune.schedulers import ASHAScheduler
 from utils import loadData, set_reproducibility
 
 class Classificator(L.LightningModule):
-    def __init__(self, CNN, class_labels, config, num_classes):
+    def __init__(self, CNN, class_labels, config, num_classes, sync_dist=False):
         super().__init__()
         self.CNN = CNN
         self.class_labels = class_labels
         self.learning_rate = config["lr"]
+        self.sync_dist= sync_dist
         if config["loss"] == "BCEwLogits":
             def bcewl(y_est, y_true):
                 return F.binary_cross_entropy_with_logits(y_est,
@@ -56,13 +57,13 @@ class Classificator(L.LightningModule):
         output = self.CNN(images)
         _, preds = torch.max(output, dim=1)
         loss = self.loss(output, labels)
-        self.log("Traning loss", loss, prog_bar=True)
+        self.log("Traning loss", loss, prog_bar=True, sync_dist=self.sync_dist)
         self.train_metrics.update(preds, labels)
         return loss
     
     def on_train_epoch_end(self):
         performance = self.train_metrics.compute()
-        self.log_dict(performance)
+        self.log_dict(performance, sync_dist=self.sync_dist)
         self.train_metrics.reset()
 
     def validation_step(self, batch):
@@ -71,13 +72,13 @@ class Classificator(L.LightningModule):
         loss = self.loss(output, labels)
         _, preds = torch.max(output, dim=1)
         self.val_confusion_matrix.update(preds, labels)
-        self.log("Validation loss", loss, prog_bar=True)
+        self.log("Validation loss", loss, prog_bar=True, sync_dist=self.sync_dist)
         self.valid_metrics.update(preds, labels)
         return loss
     
     def on_validation_epoch_end(self):
         output = self.valid_metrics.compute()
-        self.log_dict(output)
+        self.log_dict(output, sync_dist=self.sync_dist)
         self.valid_metrics.reset()
         cm = self.val_confusion_matrix.compute()
         image = self.transform_confusion_matrix(cm)
@@ -91,8 +92,8 @@ class Classificator(L.LightningModule):
         _, preds = torch.max(output, dim=1)
         self.test_metrics.update(preds, labels)
         self.test_confusion_matrix.update(preds, labels)
-        self.log("Test loss", loss, prog_bar=True)
-        self.log_dict(self.test_metrics.compute())
+        self.log("Test loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log_dict(self.test_metrics.compute(), sync_dist=self.sync_dist)
 
     def on_test_end(self):
         cm = self.test_confusion_matrix.compute()
@@ -193,16 +194,15 @@ class ConvNet(nn.Module):
 # train method for Hyperparameter tuning
 def train_func(config):
     
-    #if config["reproducibility_active"]:
-    set_reproducibility(config["seed"]) # https://discuss.ray.io/t/reproducibility-of-ray-tune-with-seeds/6812/4
+    if config["reproducibility_active"]:
+        set_reproducibility()
+    #set_reproducibility(config["seed"]) # https://discuss.ray.io/t/reproducibility-of-ray-tune-with-seeds/6812/4
     
-    train_loader, val_loader, _ = loadData(numWorkers=7, batchSize=config["batch_size"])
+    # TODO
+    train_loader, val_loader, _ = loadData(dataDir="/Project/chest_xray", numWorkers=7, batchSize=config["batch_size"])
     cnn = ConvNet(dropout= config["dropout"])
-    model = Classificator(cnn, config)
-
-    early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=1e-6)
-    checkpoint = L.pytorch.callbacks.ModelCheckpoint(dirpath='pneumonia_model/', monitor="val_BinaryAccuracy", mode='max')
-    callbacks = [early_stopping, checkpoint, RayTrainReportCallback()]
+    # TODO
+    model = Classificator(cnn, ["Normal", "Pneumonia"], config, 2, sync_dist=True)
     logger = TensorBoardLogger("../tf/logs", name="simple_CNN/tuning")
 
     trainer = L.Trainer(
@@ -210,7 +210,7 @@ def train_func(config):
         devices="auto",
         accelerator="auto",
         strategy=RayDDPStrategy(),
-        callbacks=callbacks,
+        callbacks=RayTrainReportCallback(),
         plugins=[RayLightningEnvironment()],
         enable_progress_bar=False,
         logger = logger
