@@ -142,19 +142,19 @@ def analytics(dataset_train, dataset_val, dataset_test):
     val_targets = extract_targets(dataset_val)
     pneumonia = np.count_nonzero(val_targets)
     normal = len(val_targets) - pneumonia
-    ax3.bar(labels_num, [normal,pneumonia])
-    ax3.set_xticks(labels_num, labels)
-    ax3.set_title("Distribution of validation set")
-    #ax2.set_ylim(ylim)
+    ax2.bar(labels_num, [normal,pneumonia])
+    ax2.set_xticks(labels_num, labels)
+    ax2.set_title("Distribution of validation set")
+    ax2.set_ylim(ylim)
 
     # Bar for testing
     test_targets = extract_targets(dataset_test)
     pneumonia = np.count_nonzero(test_targets)
     normal = len(test_targets) - pneumonia
-    ax2.bar(labels_num, [normal, pneumonia])
-    ax2.set_xticks(labels_num, labels)
-    ax2.set_title("Distribution of test set")
-    ax2.set_ylim(ylim)
+    ax3.bar(labels_num, [normal, pneumonia])
+    ax3.set_xticks(labels_num, labels)
+    ax3.set_title("Distribution of test set")
+    ax3.set_ylim(ylim)
 
 
 def extract_targets(dataset):
