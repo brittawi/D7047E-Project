@@ -1,1 +1,22 @@
-# D7047E-Project
+# Pneumonia Detection with Chest X-Ray Images
+
+## Overview
+This project aims to detect pneumonia in chest X-ray images using convolutional neural networks (CNNs). We explore the effectiveness of transfer learning from a pre-trained ResNet model and compare it with a simple CNN architecture.
+
+## Architecture
+This project employs two models for pneumonia detection in chest X-ray images:
+- `simpleCNN.ipynb`: Implementation of our own simple CNN model.
+- `Project-1-ResNet50.ipynb`: Implementation of a model based on ResNet with transfer learning.
+  
+## Dataset
+The dataset provided for this project has an imbalanced split...
+
+## Evaluation
+The models are evaluated using accuracy, F1-score, sensitivity, and specificity metrics:
+- **Accuracy:** Provides an overall estimate of model correctness, but may be influenced by dataset imbalance. We expect an accuracy above 80%.
+- **F1-score:** A trade-off between precision and sensitivity/recall.
+- **Sensitivity:** Indicates the proportion of positive cases correctly diagnosed.
+- **Specificity:** Indicates the proportion of negative cases correctly diagnosed.
+
+## Conclusion
+Through this project, we aim to develop an accurate and reliable model for pneumonia detection in chest X-ray images...
