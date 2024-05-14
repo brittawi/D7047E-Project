@@ -124,7 +124,8 @@ class Classificator(L.LightningModule):
       return {'optimizer': optimizer, 
               'lr_scheduler':scheduler,
               }
-      
+
+# inspired by https://www.sciencedirect.com/science/article/pii/S0208521622000742#s0010
 class ConvNet(nn.Module):
     def __init__(self, num_classes=2, dropout = 0.5):
         super().__init__()
@@ -193,7 +194,7 @@ class ConvNet(nn.Module):
 def train_func(config):
     
     #if config["reproducibility_active"]:
-    set_reproducibility(config["seed"])
+    set_reproducibility(config["seed"]) # https://discuss.ray.io/t/reproducibility-of-ray-tune-with-seeds/6812/4
     
     train_loader, val_loader, _ = loadData(numWorkers=7, batchSize=config["batch_size"])
     cnn = ConvNet(dropout= config["dropout"])
