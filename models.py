@@ -9,6 +9,18 @@ from torchvision.transforms import ToTensor
 import matplotlib.pyplot as plt
 import lightning as L
 import torch.nn.functional as F
+from lightning.pytorch.loggers import TensorBoardLogger
+
+from ray.train.lightning import (
+    RayDDPStrategy,
+    RayLightningEnvironment,
+    RayTrainReportCallback,
+    prepare_trainer,
+)
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+
+from utils import loadData, set_reproducibility
 
 class Classificator(L.LightningModule):
     def __init__(self, CNN, class_labels, config, num_classes):
@@ -112,3 +124,115 @@ class Classificator(L.LightningModule):
       return {'optimizer': optimizer, 
               'lr_scheduler':scheduler,
               }
+      
+class ConvNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.convlayer = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            #nn.Dropout2d(p=0.25),
+
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=64),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=128),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=128),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=256),
+            nn.ReLU(),
+            
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=128),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            nn.Conv2d(in_channels=128, out_channels=1024, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(num_features=1024),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            nn.Conv2d(in_channels=1024, out_channels=512, kernel_size=3, stride=1, padding=1),
+            nn.Dropout2d(p=0.25),
+            nn.BatchNorm2d(num_features=512),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Flatten(),
+            nn.Linear(in_features=4608, out_features=1024),
+            nn.LeakyReLU(0.02),
+            nn.BatchNorm1d(num_features=1024),
+            nn.Dropout(0.5),
+            nn.Linear(in_features=1024, out_features=512),
+            nn.LeakyReLU(0.02),
+            nn.BatchNorm1d(num_features=512),
+            nn.Dropout(0.5),
+            nn.Linear(in_features=512, out_features=2),
+        )
+
+    def forward(self, x):
+        return self.convlayer(x)
+    
+# train method for Hyperparameter tuning
+def train_func(config):
+    
+    #if config["reproducibility_active"]:
+    set_reproducibility(config["seed"])
+    
+    train_loader, val_loader, _ = loadData(numWorkers=7, batchSize=config["batch_size"])
+    cnn = ConvNet(dropout= config["dropout"])
+    model = Classificator(cnn, config)
+
+    early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=1e-6)
+    checkpoint = L.pytorch.callbacks.ModelCheckpoint(dirpath='pneumonia_model/', monitor="val_BinaryAccuracy", mode='max')
+    callbacks = [early_stopping, checkpoint, RayTrainReportCallback()]
+    logger = TensorBoardLogger("../tf/logs", name="simple_CNN")
+
+    trainer = L.Trainer(
+        max_epochs= config["epochs"],
+        devices="auto",
+        accelerator="auto",
+        strategy=RayDDPStrategy(),
+        callbacks=callbacks,
+        plugins=[RayLightningEnvironment()],
+        enable_progress_bar=False,
+        logger = logger
+    )
+
+    trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
+    trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
+    
+    trainer = prepare_trainer(trainer)
+    trainer.fit(model,train_dataloaders=train_loader,val_dataloaders=val_loader)
+    
+# tuning method for Hyperparam tuning
+def tuning(ray_trainer, search_space, num_samples=10, num_epochs=5):
+    scheduler = ASHAScheduler(max_t=num_epochs, grace_period=1, reduction_factor=2)
+
+    tuner = tune.Tuner(
+        ray_trainer,
+        param_space={"train_loop_config": search_space},
+        tune_config=tune.TuneConfig(
+            metric="val_BinaryAccuracy",
+            mode="max",
+            num_samples=num_samples,
+            scheduler=scheduler,
+        ),
+    )
+    return tuner.fit()
