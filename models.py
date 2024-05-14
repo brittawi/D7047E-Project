@@ -126,7 +126,7 @@ class Classificator(L.LightningModule):
               }
       
 class ConvNet(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=2, dropout = 0.5):
         super().__init__()
         self.convlayer = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1),
@@ -178,12 +178,12 @@ class ConvNet(nn.Module):
             nn.Linear(in_features=4608, out_features=1024),
             nn.LeakyReLU(0.02),
             nn.BatchNorm1d(num_features=1024),
-            nn.Dropout(0.5),
+            nn.Dropout(dropout),
             nn.Linear(in_features=1024, out_features=512),
             nn.LeakyReLU(0.02),
             nn.BatchNorm1d(num_features=512),
-            nn.Dropout(0.5),
-            nn.Linear(in_features=512, out_features=2),
+            nn.Dropout(dropout),
+            nn.Linear(in_features=512, out_features=num_classes),
         )
 
     def forward(self, x):
@@ -202,7 +202,7 @@ def train_func(config):
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=1e-6)
     checkpoint = L.pytorch.callbacks.ModelCheckpoint(dirpath='pneumonia_model/', monitor="val_BinaryAccuracy", mode='max')
     callbacks = [early_stopping, checkpoint, RayTrainReportCallback()]
-    logger = TensorBoardLogger("../tf/logs", name="simple_CNN")
+    logger = TensorBoardLogger("../tf/logs", name="simple_CNN/tuning")
 
     trainer = L.Trainer(
         max_epochs= config["epochs"],
