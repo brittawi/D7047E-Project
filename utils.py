@@ -3,14 +3,16 @@ from torchvision import datasets
 import torchvision.transforms.v2 as transforms
 from torchvision.transforms import InterpolationMode
 from torch.utils.data import WeightedRandomSampler
+from torchvision.utils import make_grid 
 import torch
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 TRAIN_FRACTION = 0.8
 VALIDATION_FRACTION = 1 - TRAIN_FRACTION
 
-def loaddata(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True, useAugment = True, useSampler = False, showAnalytics = False):
+def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True, useAugment = True, useSampler = False, showAnalytics = False):
     
     data_dir_train = dataDir + "/train"
     data_dir_val = dataDir + "/val"
@@ -133,3 +135,9 @@ def analytics(dataset_train, dataset_val, dataset_test):
     ax3.set_xticks(labels_num, labels)
     ax3.set_title("Distribution of validation set")
     #ax2.set_ylim(ylim)
+    
+def plotExamples(train_loader):
+    examples = next(iter(train_loader))
+    images, labels = examples
+    grid = make_grid(images[:9], nrow=3)
+    plt.imshow(grid.permute(1, 2, 0))
