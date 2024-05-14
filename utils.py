@@ -48,6 +48,7 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
                                                                 generator=generator1)
         dataset_train.transform = train_transform
         dataset_val.transform = transform
+        
 
     dataset_test = datasets.ImageFolder(data_dir_test, transform)
 
@@ -55,7 +56,9 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
         analytics(dataset_train, dataset_val, dataset_test)
 
     if useSampler:
-        labels = dataset_train.targets
+        labels = []
+        for _, target in dataset_train:
+            labels.append(target)
         class_sample_count = np.array(
             [len(np.where(labels == t)[0]) for t in np.unique(labels)])
         
@@ -69,7 +72,7 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
         train_loader = DataLoader(
             dataset_train, 
             batch_size=batchSize, 
-            shuffle=False, 
+            shuffle=False, # has to be False when using WeightedRandomSampler
             num_workers=numWorkers, 
             persistent_workers= True,
             sampler = sampler
@@ -113,12 +116,27 @@ def analytics(dataset_train, dataset_val, dataset_test):
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(10,5))
     
     # Bar for training
-    pneumonia = np.count_nonzero(dataset_train.targets)
-    normal = len(dataset_train.targets) - pneumonia
+    # Get all targets
+    targets = []
+    for _, target in dataset_train:
+        targets.append(target)
+    pneumonia = np.count_nonzero(targets)
+    normal = len(targets) - pneumonia
     ax1.bar(labels_num, [normal,pneumonia])
     ax1.set_xticks(labels_num, labels)
     ax1.set_title("Distribution of training set")
     ylim = ax1.get_ylim()
+    
+    # Bar for validation
+    targets = []
+    for _, target in dataset_val:
+        targets.append(target)
+    pneumonia = np.count_nonzero(targets)
+    normal = len(targets) - pneumonia
+    ax3.bar(labels_num, [normal,pneumonia])
+    ax3.set_xticks(labels_num, labels)
+    ax3.set_title("Distribution of validation set")
+    ax3.set_ylim(ylim)
     
     # Bar for testing
     pneumonia = np.count_nonzero(dataset_test.targets)
@@ -127,14 +145,6 @@ def analytics(dataset_train, dataset_val, dataset_test):
     ax2.set_xticks(labels_num, labels)
     ax2.set_title("Distribution of test set")
     ax2.set_ylim(ylim)
-    
-    # Bar for validation
-    pneumonia = np.count_nonzero(dataset_val.targets)
-    normal = len(dataset_val.targets) - pneumonia
-    ax3.bar(labels_num, [normal,pneumonia])
-    ax3.set_xticks(labels_num, labels)
-    ax3.set_title("Distribution of validation set")
-    #ax2.set_ylim(ylim)
     
 def plotExamples(train_loader):
     examples = next(iter(train_loader))
