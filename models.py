@@ -204,13 +204,15 @@ def train_func(config):
     # TODO
     model = Classificator(cnn, ["Normal", "Pneumonia"], config, 2, sync_dist=True)
     logger = TensorBoardLogger("/tf/logs", name="simple_CNN/tuning")
+    early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='Validation loss', patience=3, min_delta=1e-6)
+    callbacks = [early_stopping, RayTrainReportCallback()]
 
     trainer = L.Trainer(
         max_epochs= config["epochs"],
         devices="auto",
         accelerator="auto",
         strategy=RayDDPStrategy(),
-        callbacks=RayTrainReportCallback(),
+        callbacks=callbacks,
         plugins=[RayLightningEnvironment()],
         enable_progress_bar=False,
         logger = logger
