@@ -203,7 +203,7 @@ def train_func(config):
     cnn = ConvNet(dropout= config["dropout"])
     # TODO
     model = Classificator(cnn, ["Normal", "Pneumonia"], config, 2, sync_dist=True)
-    logger = TensorBoardLogger("../tf/logs", name="simple_CNN/tuning")
+    logger = TensorBoardLogger("/tf/logs", name="simple_CNN/tuning")
 
     trainer = L.Trainer(
         max_epochs= config["epochs"],
