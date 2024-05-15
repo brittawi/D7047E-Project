@@ -1,3 +1,5 @@
+from typing import List
+
 from torch.utils.data import DataLoader
 from torchvision import datasets
 import torchvision.transforms.v2 as transforms
@@ -115,7 +117,7 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
     return train_loader, val_loader, test_loader
 
 
-def analytics(dataset_train, dataset_val, dataset_test):
+def analytics(dataset_train, dataset_val, dataset_test, labels: List[str] | None = None, labels_num: List[int] | None = None):
     
     # print sizes of datasets
     print(f'Size of train dataset: {len(dataset_train)}')
@@ -123,33 +125,35 @@ def analytics(dataset_train, dataset_val, dataset_test):
     print(f'Size of test dataset: {len(dataset_test)}')
 
     # plot distribution of each data set
-    labels = ["normal", "pneumonia"]
-    labels_num = [0,1]
+    if labels is None:
+        labels = ["normal", "pneumonia"]
+    if labels_num is None:
+        labels_num = list(range(len(labels)))
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(10,5))
 
     # Bar for training
-    train_targets = extract_targets(dataset_train, flattened=True)  # might be batched
-    pneumonia = np.count_nonzero(train_targets)
-    normal = len(train_targets) - pneumonia
-    ax1.bar(labels_num, [normal,pneumonia])
+    train_targets = extract_targets(dataset_train, flattened=True)
+    unique, counts = np.unique(train_targets, return_counts=True)
+    assert unique.tolist() == labels_num
+    ax1.bar(labels_num, counts)
     ax1.set_xticks(labels_num, labels)
     ax1.set_title("Distribution of training set")
     ylim = ax1.get_ylim()
     
     # Bar for validation
     val_targets = extract_targets(dataset_val, flattened=True)
-    pneumonia = np.count_nonzero(val_targets)
-    normal = len(val_targets) - pneumonia
-    ax2.bar(labels_num, [normal,pneumonia])
+    unique, counts = np.unique(val_targets, return_counts=True)
+    assert unique.tolist() == labels_num
+    ax2.bar(labels_num, counts)
     ax2.set_xticks(labels_num, labels)
     ax2.set_title("Distribution of validation set")
     ax2.set_ylim(ylim)
 
     # Bar for testing
     test_targets = extract_targets(dataset_test, flattened=True)
-    pneumonia = np.count_nonzero(test_targets)
-    normal = len(test_targets) - pneumonia
-    ax3.bar(labels_num, [normal, pneumonia])
+    unique, counts = np.unique(test_targets, return_counts=True)
+    assert unique.tolist() == labels_num
+    ax3.bar(labels_num, counts)
     ax3.set_xticks(labels_num, labels)
     ax3.set_title("Distribution of test set")
     ax3.set_ylim(ylim)

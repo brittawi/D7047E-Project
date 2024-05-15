@@ -2,7 +2,9 @@ import io
 import torch
 import torch.nn as nn
 import seaborn as sns
-from torchmetrics.classification import BinaryF1Score, BinaryConfusionMatrix, BinaryAccuracy, BinaryRecall, BinaryPrecision
+from torchmetrics.classification import BinaryF1Score, BinaryConfusionMatrix, BinaryAccuracy, BinaryRecall, \
+    BinaryPrecision, MulticlassConfusionMatrix, MulticlassPrecision, MulticlassRecall, MulticlassF1Score, \
+    MulticlassAccuracy
 from torchmetrics import MetricCollection
 import PIL.Image
 from torchvision.transforms import ToTensor
@@ -39,14 +41,24 @@ class Classificator(L.LightningModule):
         else:
             raise NotImplementedError(f"Loss {config['loss']} not implemented")
 
-        self.val_confusion_matrix = BinaryConfusionMatrix()
-        self.test_confusion_matrix = BinaryConfusionMatrix()
-        metrics = MetricCollection([
-            BinaryPrecision(),
-            BinaryRecall(),
-            BinaryF1Score(),
-            BinaryAccuracy()
-        ])
+        if num_classes == 2:
+            self.val_confusion_matrix = BinaryConfusionMatrix()
+            self.test_confusion_matrix = BinaryConfusionMatrix()
+            metrics = MetricCollection([
+                BinaryPrecision(),
+                BinaryRecall(),
+                BinaryF1Score(),
+                BinaryAccuracy()
+            ])
+        else:
+            self.val_confusion_matrix = MulticlassConfusionMatrix(num_classes)
+            self.test_confusion_matrix = MulticlassConfusionMatrix(num_classes)
+            metrics = MetricCollection([
+                MulticlassPrecision(num_classes),
+                MulticlassRecall(num_classes),
+                MulticlassF1Score(num_classes),
+                MulticlassAccuracy(num_classes),
+            ])
         self.train_metrics = metrics.clone(prefix='train_')
         self.valid_metrics = metrics.clone(prefix='val_')
         self.test_metrics = metrics.clone(prefix="test_")
