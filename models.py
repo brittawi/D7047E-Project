@@ -93,13 +93,14 @@ class Classificator(L.LightningModule):
         self.test_metrics.update(preds, labels)
         self.test_confusion_matrix.update(preds, labels)
         self.log("Test loss", loss, prog_bar=True, sync_dist=self.sync_dist)
-        self.log_dict(self.test_metrics.compute(), sync_dist=self.sync_dist)
 
-    def on_test_end(self):
+    def on_test_epoch_end(self):
+        output = self.test_metrics.compute()
+        self.log_dict(output, sync_dist=self.sync_dist)
+        self.test_metrics.reset()
         cm = self.test_confusion_matrix.compute()
         image = self.transform_confusion_matrix(cm)
         self.logger.experiment.add_image("Confusion matrix test results", image)
-        self.test_metrics.reset()
         self.test_confusion_matrix.reset()
 
     # Takes a tensor and plot confusion matrix from it and then return as tensor
