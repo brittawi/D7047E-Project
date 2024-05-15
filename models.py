@@ -57,7 +57,7 @@ class Classificator(L.LightningModule):
         output = self.CNN(images)
         _, preds = torch.max(output, dim=1)
         loss = self.loss(output, labels)
-        self.log("Traning loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("Training loss", loss, prog_bar=True, sync_dist=self.sync_dist)
         self.train_metrics.update(preds, labels)
         return loss
     
@@ -201,12 +201,17 @@ def train_func(config):
         set_reproducibility()
     #set_reproducibility(config["seed"]) # https://discuss.ray.io/t/reproducibility-of-ray-tune-with-seeds/6812/4
     
+    project_data = config.get('project_data_dir', "/Project")
+    data_set_dir = config.get('data_set_dir', project_data + "/chest_xray")
+    lightning_logs = config.get('lightning_logs', project_data + "/lightning_logs")
+
     # TODO
-    train_loader, val_loader, _ = loadData(dataDir="/Project/chest_xray", numWorkers=7, batchSize=config["batch_size"])
+    train_loader, val_loader, _ = loadData(dataDir=data_set_dir, numWorkers=7, batchSize=config["batch_size"])
+
     cnn = ConvNet(dropout= config["dropout"])
     # TODO
     model = Classificator(cnn, ["Normal", "Pneumonia"], config, 2, sync_dist=True)
-    logger = TensorBoardLogger("lightning_logs", name="simple_CNN/tuning")
+    logger = TensorBoardLogger(lightning_logs, name="simple_CNN/tuning")
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='Validation loss', patience=3, min_delta=1e-6)
     callbacks = [early_stopping, RayTrainReportCallback()]
 
