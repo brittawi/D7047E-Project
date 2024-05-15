@@ -99,6 +99,8 @@ class Classificator(L.LightningModule):
         cm = self.test_confusion_matrix.compute()
         image = self.transform_confusion_matrix(cm)
         self.logger.experiment.add_image("Confusion matrix test results", image)
+        self.test_metrics.reset()
+        self.test_confusion_matrix.reset()
 
     # Takes a tensor and plot confusion matrix from it and then return as tensor
     def transform_confusion_matrix(self, cm):
