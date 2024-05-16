@@ -206,7 +206,11 @@ def train_func(config):
     lightning_logs = config.get('lightning_logs', project_data + "/lightning_logs")
 
     # TODO
-    train_loader, val_loader, _ = loadData(dataDir=data_set_dir, numWorkers=7, batchSize=config["batch_size"])
+    train_loader, val_loader, _ = loadData(dataDir=data_set_dir,
+                                           numWorkers=7,
+                                           batchSize=config["batch_size"],
+                                           useSampler=config.get('use_sampler', False),
+                                           )
 
     cnn = ConvNet(dropout= config["dropout"])
     # TODO

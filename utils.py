@@ -24,7 +24,7 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
     :param customSplit:
     :param useAugment:
     :param useSampler:
-    :param showAnalytics:
+    :param showAnalytics: show analytics of data prior to resampler
     :return: train_loader, val_loader, test_loader
     """
     data_dir_train = dataDir + "/train"
@@ -71,24 +71,22 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
         analytics(dataset_train, dataset_val, dataset_test)
 
     if useSampler:
-        labels = extract_targets(dataset_train)
-        class_sample_count = np.array(
-            [len(np.where(labels == t)[0]) for t in np.unique(labels)])
-        
+        labels = extract_targets(dataset_train)  # not batched yet
+        _, class_sample_count = np.unique(labels, return_counts=True)
         # use WeightedRandomSampler as dataset is not balanced
         weight = 1. / class_sample_count
         samples_weight = np.array([weight[t] for t in labels])
-        
-        samples_weight = torch.from_numpy(samples_weight)
-        sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight))
-    
+
+        samples_weight = torch.from_numpy(samples_weight).type(torch.float64)
+        sampler = WeightedRandomSampler(samples_weight, 2 * len(samples_weight))
+
         train_loader = DataLoader(
             dataset_train, 
             batch_size=batchSize, 
-            shuffle=False, # has to be False when using WeightedRandomSampler
+            shuffle=False,  # has to be False when using WeightedRandomSampler
             num_workers=numWorkers, 
-            persistent_workers= True,
-            sampler = sampler
+            persistent_workers=True,
+            sampler=sampler
             )
     else:
         train_loader = DataLoader(
@@ -130,7 +128,7 @@ def analytics(dataset_train, dataset_val, dataset_test):
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(10,5))
 
     # Bar for training
-    train_targets = extract_targets(dataset_train)
+    train_targets = extract_targets(dataset_train, flattened=True)  # might be batched
     pneumonia = np.count_nonzero(train_targets)
     normal = len(train_targets) - pneumonia
     ax1.bar(labels_num, [normal,pneumonia])
@@ -139,7 +137,7 @@ def analytics(dataset_train, dataset_val, dataset_test):
     ylim = ax1.get_ylim()
     
     # Bar for validation
-    val_targets = extract_targets(dataset_val)
+    val_targets = extract_targets(dataset_val, flattened=True)
     pneumonia = np.count_nonzero(val_targets)
     normal = len(val_targets) - pneumonia
     ax2.bar(labels_num, [normal,pneumonia])
@@ -148,7 +146,7 @@ def analytics(dataset_train, dataset_val, dataset_test):
     ax2.set_ylim(ylim)
 
     # Bar for testing
-    test_targets = extract_targets(dataset_test)
+    test_targets = extract_targets(dataset_test, flattened=True)
     pneumonia = np.count_nonzero(test_targets)
     normal = len(test_targets) - pneumonia
     ax3.bar(labels_num, [normal, pneumonia])
@@ -157,11 +155,15 @@ def analytics(dataset_train, dataset_val, dataset_test):
     ax3.set_ylim(ylim)
 
 
-def extract_targets(dataset):
+def extract_targets(dataset, flattened=False):
     from torch.utils.data import Subset
-    if isinstance(dataset, Subset):
-        return [target for _, target in dataset]
-    return dataset.targets
+    if isinstance(dataset, (Subset, DataLoader)):
+        targets = [target for _, target in dataset]
+        if flattened and isinstance(dataset, DataLoader):  # flatten batched data
+            return np.concatenate(targets)
+        return targets
+    else:
+        return dataset.targets
 
 
 def plotExamples(train_loader):
