@@ -9,9 +9,6 @@ This project employs two models for pneumonia detection in chest X-ray images:
 - `simpleCNN.ipynb`: First Implementation of our own simple CNN model.
 - `simpleCNN_tuning.ipynb`: Implementation of hyperparameter tuning, using a complexer CNN model that is defined in the models.py.
 - `Project-1-ResNet50.ipynb`: Implementation of a model based on ResNet with transfer learning.
-  
-## Dataset
-The dataset provided for this project has an imbalanced split...
 
 ## Evaluation
 The models are evaluated using accuracy, F1-score, sensitivity, and specificity metrics:
@@ -21,4 +18,4 @@ The models are evaluated using accuracy, F1-score, sensitivity, and specificity 
 - **Specificity:** Indicates the proportion of negative cases correctly diagnosed.
 
 ## Conclusion
-Through this project, we aim to develop an accurate and reliable model for pneumonia detection in chest X-ray images...
+Through this project, we aim to develop an accurate and reliable model for pneumonia detection in chest X-ray images.
