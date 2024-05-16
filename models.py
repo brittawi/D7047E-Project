@@ -212,7 +212,7 @@ def train_func(config):
     # TODO
     model = Classificator(cnn, ["Normal", "Pneumonia"], config, 2, sync_dist=True)
     logger = TensorBoardLogger(lightning_logs, name="simple_CNN/tuning")
-    early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='Validation loss', patience=3, min_delta=1e-6)
+    early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='Validation loss', patience=10, min_delta=1e-6)
     callbacks = [early_stopping, RayTrainReportCallback()]
 
     trainer = L.Trainer(
