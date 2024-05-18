@@ -185,7 +185,9 @@ def extract_targets(dataset, flattened=False):
 def plotExamples(train_loader):
     examples = next(iter(train_loader))
     images, labels = examples
-    print(labels[:9].reshape(3, 3))
+    print("label\n", labels[:9].reshape(3, 3))
+    print("min\n", np.array([np.amin(image.numpy()) for image in images[:9]]).reshape(3, 3))
+    print("max\n", np.array([np.amax(image.numpy()) for image in images[:9]]).reshape(3, 3))
     grid = make_grid(images[:9], nrow=3)
     plt.imshow(grid.permute(1, 2, 0))
 
