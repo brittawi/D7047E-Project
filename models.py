@@ -205,7 +205,35 @@ class ConvNet(nn.Module):
 
     def forward(self, x):
         return self.convlayer(x)
-    
+
+
+class MiniNet(nn.Module):
+    def __init__(self, num_classes=2, dropout=0.5):
+        super().__init__()
+        self.convlayer = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=1*28*28, out_features=512),
+            nn.LeakyReLU(0.02),
+            nn.BatchNorm1d(num_features=512),
+            nn.Dropout(dropout),
+            nn.Linear(in_features=512, out_features=num_classes),
+        )
+
+    def forward(self, x):
+        return self.convlayer(x)
+
+    import torchvision.transforms.v2 as transforms
+    transform = transforms.Compose(
+        [
+            transforms.Resize(size=(32, 32)),
+            transforms.CenterCrop(size=(28, 28)),
+            transforms.ToImage(),
+            transforms.ToDtype(torch.float32, scale=True),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),  #
+            transforms.Grayscale(),
+        ]
+    )
+
 # train method for Hyperparameter tuning
 def train_func(config):
     
@@ -218,16 +246,27 @@ def train_func(config):
     lightning_logs = config.get('lightning_logs', project_data + "/lightning_logs")
 
     # TODO
+
+    net_ = config.get('net', 'ConvNet')
+    if net_ == 'ConvNet':
+        cnn = ConvNet(dropout= config["dropout"])
+        transform = None  # default
+    elif net_ == 'MiniNet':
+        cnn = MiniNet(dropout=config["dropout"])
+        transform = cnn.transform
+    else:
+        raise NotImplementedError(f"Unexpected net_type {net_}")
+
     train_loader, val_loader, _ = loadData(dataDir=data_set_dir,
                                            numWorkers=7,
                                            batchSize=config["batch_size"],
                                            useSampler=config.get('use_sampler', False),
+                                           transform=transform,
                                            )
 
-    cnn = ConvNet(dropout= config["dropout"])
     # TODO
     model = Classificator(cnn, ["Normal", "Pneumonia"], config, 2, sync_dist=True)
-    logger = TensorBoardLogger(lightning_logs, name="simple_CNN/tuning")
+    logger = TensorBoardLogger(lightning_logs, name=f"{net_}/tuning")
     early_stopping = L.pytorch.callbacks.EarlyStopping(monitor='Validation loss', patience=10, min_delta=1e-6)
     callbacks = [early_stopping, RayTrainReportCallback()]
 

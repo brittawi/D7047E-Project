@@ -17,7 +17,15 @@ TRAIN_FRACTION = 0.8
 VALIDATION_FRACTION = 1 - TRAIN_FRACTION
 
 
-def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True, useAugment = False, useSampler = False, showAnalytics = False):
+def loadData(batchSize,
+             numWorkers,
+             dataDir = "./chest_xray",
+             customSplit = True,
+             useAugment = False,
+             useSampler = False,
+             showAnalytics = False,
+             transform = None,
+             ):
     """
 
     :param batchSize:
@@ -35,17 +43,20 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
 
     assert not customSplit or not useAugment, "custom split and augment are mutually exclusive"
 
-    # Some desired transforms for ResNet50
-    # https://pytorch.org/vision/stable/models/generated/torchvision.models.resnet50.html#torchvision.models.resnet50
-    transform = transforms.Compose(
-        [
-            transforms.Resize(size=(256, 256)),
-            transforms.CenterCrop(size=(224, 224)),
-            transforms.ToImage(),
-            transforms.ToDtype(torch.float32, scale=True),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))  # 
-        ]
-    )
+    if transform is None:
+        # Some desired transforms for ResNet50
+        # https://pytorch.org/vision/stable/models/generated/torchvision.models.resnet50.html#torchvision.models.resnet50
+        transform = transforms.Compose(
+            [
+                transforms.Resize(size=(256, 256)),
+                transforms.CenterCrop(size=(224, 224)),
+                transforms.ToImage(),
+                transforms.ToDtype(torch.float32, scale=True),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))  #
+            ]
+        )
+    else:
+        transform = transform
 
     dataset_train = datasets.ImageFolder(data_dir_train, transform)
     dataset_val = datasets.ImageFolder(data_dir_val, transform)
@@ -95,7 +106,8 @@ def loadData(batchSize, numWorkers, dataDir = "./chest_xray", customSplit = True
             dataset_train, 
             batch_size=batchSize, 
             shuffle=True, 
-            num_workers=numWorkers, 
+            drop_last=True,  # reading out of sync => early termination, OK when shuffling
+            num_workers=numWorkers,
             persistent_workers= True
             )
         
@@ -173,6 +185,7 @@ def extract_targets(dataset, flattened=False):
 def plotExamples(train_loader):
     examples = next(iter(train_loader))
     images, labels = examples
+    print(labels[:9].reshape(3, 3))
     grid = make_grid(images[:9], nrow=3)
     plt.imshow(grid.permute(1, 2, 0))
 
