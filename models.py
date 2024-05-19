@@ -212,11 +212,11 @@ class MiniNet(nn.Module):
         super().__init__()
         self.convlayer = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(in_features=1*14*14, out_features=128),
+            nn.Linear(in_features=1*7*7, out_features=32),
             nn.LeakyReLU(0.02),
-            nn.BatchNorm1d(num_features=128),
+            nn.BatchNorm1d(num_features=32),
             nn.Dropout(dropout),
-            nn.Linear(in_features=128, out_features=num_classes),
+            nn.Linear(in_features=32, out_features=num_classes),
         )
 
     def forward(self, x):
@@ -225,8 +225,8 @@ class MiniNet(nn.Module):
     import torchvision.transforms.v2 as transforms
     transform = transforms.Compose(
         [
-            transforms.Resize(size=(16, 16)),
-            transforms.CenterCrop(size=(14, 14)),
+            transforms.Resize(size=(9, 9)),  # margin around
+            transforms.CenterCrop(size=(7, 7)),
             transforms.ToImage(),
             transforms.ToDtype(torch.float32, scale=True),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),  #
