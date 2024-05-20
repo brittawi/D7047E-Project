@@ -212,11 +212,7 @@ class MiniNet(nn.Module):
         super().__init__()
         self.convlayer = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(in_features=1*7*7, out_features=32),
-            nn.LeakyReLU(0.02),
-            nn.BatchNorm1d(num_features=32),
-            nn.Dropout(dropout),
-            nn.Linear(in_features=32, out_features=num_classes),
+            nn.Linear(in_features=1*7*7, out_features=num_classes),
         )
 
     def forward(self, x):
